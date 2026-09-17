@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanji Kartları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Bu dosya tools/build.py ile üretilir. Veriyi değiştirmek için data/ klasörünü düzenleyin. -->
+<style>
+:root{
+  --bg:#eceefb; --ink:#1d1f3a; --muted:#5d6184; --faint:#8a8db0;
+  --glass:rgba(255,255,255,.46); --glass-strong:rgba(255,255,255,.62);
+  --glass-brd:rgba(255,255,255,.8); --line:rgba(29,31,58,.1);
+  --orb1:#ff9ec7; --orb2:#8fd8ff; --orb3:#b9a4ff;
+  --accent:#e0457a; --accent2:#3b7bd8; --shadow:rgba(40,40,90,.16);
+  --ui:"Manrope","Zen Kaku Gothic New",system-ui,sans-serif;
+  --jp:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --kanji:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e0f26; --ink:#f2f1ff; --muted:#a6a9cf; --faint:#7c7fa6;
+    --glass:rgba(255,255,255,.07); --glass-strong:rgba(255,255,255,.12);
+    --glass-brd:rgba(255,255,255,.16); --line:rgba(255,255,255,.1);
+    --orb1:#b3155a; --orb2:#0b6aa6; --orb3:#5a33b0;
+    --accent:#ff6c9c; --accent2:#6fb0ff; --shadow:rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e0f26; --ink:#f2f1ff; --muted:#a6a9cf; --faint:#7c7fa6;
+  --glass:rgba(255,255,255,.07); --glass-strong:rgba(255,255,255,.12);
+  --glass-brd:rgba(255,255,255,.16); --line:rgba(255,255,255,.1);
+  --orb1:#b3155a; --orb2:#0b6aa6; --orb3:#5a33b0;
+  --accent:#ff6c9c; --accent2:#6fb0ff; --shadow:rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100dvh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+[lang="ja"]{font-family:var(--jp)}
+.glass{background:var(--glass);border:1px solid var(--glass-brd);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+
+.orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.75}
+.orb.a{width:340px;height:340px;background:var(--orb1);top:-80px;left:-90px}
+.orb.b{width:380px;height:380px;background:var(--orb2);bottom:-120px;right:-120px}
+.orb.c{width:260px;height:260px;background:var(--orb3);top:38%;left:55%}
+
+.app{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));min-height:100dvh;display:flex;flex-direction:column}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;height:52px;flex:none}
+.icon-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.icon-btn svg{width:20px;height:20px}
+.top h1{font-size:15px;font-weight:700}
+.counter{min-width:44px;text-align:right;font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Görünümler */
+.sec{display:none;flex:1;flex-direction:column;padding-top:10px}
+.app[data-view="cards"] .sec-cards,
+.app[data-view="list"] .sec-list,
+.app[data-view="radicals"] .sec-radicals,
+.app[data-view="radical"] .sec-radical,
+.app[data-view="favs"] .sec-favs,
+.app[data-view="settings"] .sec-settings,
+.app[data-view="about"] .sec-about{display:flex}
+
+/* Kart */
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;padding:4px 0 8px}
+.card{position:relative;background:var(--glass);border:1px solid var(--glass-brd);border-radius:46px;padding:34px 22px 22px;backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 24px 60px var(--shadow);touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .25s ease,opacity .25s ease}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.35),rgba(255,255,255,0) 42%)}
+.card.dragging{transition:none}
+.kanji-row{display:flex;justify-content:center}
+.kanji-wrap{position:relative;display:inline-block}
+.kanji{display:block;font-family:var(--kanji);font-weight:700;font-size:clamp(104px,32vw,142px);line-height:1.1}
+.side-btn{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--faint)}
+.side-btn svg{width:26px;height:26px;transition:transform .2s}
+.heart{left:100%;margin-left:6px}
+.speak-main{right:100%;margin-right:6px}
+.heart[aria-pressed="true"]{color:var(--accent)}
+.heart[aria-pressed="true"] path{fill:currentColor}
+.heart.pop svg{animation:pop .35s ease}
+@keyframes pop{40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.speaking{color:var(--accent2)!important}
+.speaking svg .wave{animation:wave .8s ease-in-out infinite alternate}
+@keyframes wave{from{opacity:.3}to{opacity:1}}
+
+.readings{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+.reading{text-align:center;padding:12px 8px;border-radius:22px;background:var(--glass-strong);border:1px solid var(--line)}
+.rl{display:block;font-size:11px;color:var(--faint);margin-bottom:4px}
+.rv{font-size:17px;font-weight:500;line-height:1.45}
+.meta{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;margin:16px auto 4px}
+.meaning{font-size:15px;font-weight:600;color:var(--muted)}
+.radchip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px 5px 6px;border-radius:16px;background:var(--glass-strong);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.radchip b{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--glass);font-family:var(--kanji);color:var(--ink);font-size:15px}
+
+.words{list-style:none;margin-top:14px;border-top:1px solid var(--line)}
+.words li{display:grid;grid-template-columns:minmax(88px,auto) 1fr 36px;gap:12px;align-items:center;padding:9px 0 9px 4px;border-bottom:1px solid var(--line)}
+.words li:last-child{border-bottom:0}
+.ww{font-size:19px;font-weight:500;line-height:1.2}
+.wr{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+.wt{font-size:14px;line-height:1.35}
+.speak-sm{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--faint)}
+.speak-sm svg{width:18px;height:18px}
+
+.hint{text-align:center;font-size:12px;color:var(--faint);margin-top:14px}
+.controls{display:flex;justify-content:center;align-items:center;gap:18px;padding-top:12px}
+.ctrl{width:56px;height:56px;border-radius:50%;display:grid;place-items:center}
+.ctrl svg{width:22px;height:22px}
+.ctrl.small{width:46px;height:46px}
+.ctrl[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+
+/* Menü */
+.scrim{position:fixed;inset:0;background:rgba(10,10,30,.35);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);z-index:21;padding:max(20px,env(safe-area-inset-top)) 18px 24px;background:var(--glass-strong);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);border-right:1px solid var(--glass-brd);transform:translateX(-102%);transition:transform .28s ease;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.drawer.open{transform:none}
+.drawer h2{font-size:13px;font-weight:600;color:var(--faint);margin:18px 8px 6px}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:16px;text-align:left;font-weight:600;font-size:15px;border:1px solid transparent}
+.nav-item svg{width:20px;height:20px;flex:none}
+.nav-item .jp{width:20px;text-align:center;font-family:var(--kanji);font-size:17px;flex:none}
+.nav-item[aria-current="page"]{background:var(--glass-strong);border-color:var(--line)}
+.nav-item .count{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.levels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:0 4px}
+.lvl{height:40px;border-radius:14px;font-weight:700;font-size:14px;border:1px solid var(--line)}
+.lvl[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lvl:disabled{opacity:.4;cursor:default}
+.soon{font-size:12px;color:var(--faint);padding:6px 8px}
+
+/* Seviye filtreleri */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:36px;padding:0 14px;border-radius:18px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.chip small{font-weight:500;color:var(--faint);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip[aria-pressed="true"] small{color:rgba(255,255,255,.8)}
+.chip:disabled{opacity:.4;cursor:default}
+
+/* Kare listeler */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:10px}
+.tile{position:relative;aspect-ratio:1;border-radius:18px;display:grid;place-items:center;font-family:var(--kanji);font-weight:700;font-size:32px;line-height:1}
+.tile .fav-dot{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.stroke-h{font-size:12px;font-weight:600;color:var(--faint);margin:16px 4px 8px}
+.stroke-h:first-child{margin-top:0}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
+.rtile{border-radius:20px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.rtile .rs{font-family:var(--kanji);font-weight:700;font-size:30px;line-height:1.1}
+.rtile .rn{font-size:12px;line-height:1.25;color:var(--muted)}
+.rtile .rc{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+.rad-head{display:flex;align-items:center;gap:16px;padding:16px;border-radius:30px;margin-bottom:14px}
+.rad-big{width:84px;height:84px;flex:none;border-radius:24px;display:grid;place-items:center;font-family:var(--kanji);font-weight:700;font-size:48px;background:var(--glass-strong);border:1px solid var(--line)}
+.rad-info h2{font-size:19px;font-weight:700}
+.rad-info p{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5}
+.back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;height:36px;padding:0 14px 0 8px;border-radius:18px;font-size:13px;font-weight:600;margin-bottom:12px}
+.back svg{width:18px;height:18px}
+
+/* Favoriler */
+.search{position:relative;margin-bottom:14px}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--faint)}
+.search input{width:100%;height:50px;border-radius:25px;padding:0 18px 0 44px;font:inherit;font-size:15px;color:var(--ink)}
+.search input::placeholder{color:var(--faint)}
+.fav-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.fav{display:flex;align-items:center;gap:16px;width:100%;padding:10px 16px 10px 10px;border-radius:24px;text-align:left}
+.fk{width:60px;height:60px;flex:none;border-radius:18px;display:grid;place-items:center;font-family:var(--kanji);font-weight:700;font-size:34px;background:var(--glass-strong);border:1px solid var(--line)}
+.fr{font-family:var(--jp);font-size:20px;font-weight:500}
+.fm{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.empty{text-align:center;color:var(--muted);font-size:14px;line-height:1.6;padding:40px 20px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);max-width:calc(100% - 36px);padding:12px 18px;border-radius:18px;font-size:13px;font-weight:600;background:var(--glass-strong);border:1px solid var(--glass-brd);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);opacity:0;pointer-events:none;transition:.25s;z-index:30}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* Ayarlar ve kaynaklar */
+.panel{border-radius:28px;padding:18px;margin-bottom:14px}
+.panel h2{font-size:15px;font-weight:700;margin-bottom:4px}
+.panel p.note{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{height:46px;border-radius:16px;font-weight:700;border:1px solid var(--line);background:var(--glass-strong)}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.link-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;border-radius:24px;font-weight:600;text-align:left}
+.wide-btn{width:100%;height:46px;border-radius:16px;font-weight:700;background:var(--accent);color:#fff}
+.wide-btn:disabled{opacity:.6}
+.about{font-size:14px;line-height:1.6}
+.about h3{font-size:14px;font-weight:700;margin:14px 0 4px}
+.about h3:first-child{margin-top:0}
+.about p{color:var(--muted)}
+.about a{color:var(--accent);word-break:break-word}
+.about .legal{font-size:12.5px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="orbs" aria-hidden="true"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" stroke="none"/><path class="wave" d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="wave" d="M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.2 4.5c2 0 3.5 1.1 4.8 2.8 1.3-1.7 2.8-2.8 4.8-2.8 3.6 0 5.7 3.5 4.5 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="app" id="app" data-view="cards">
+  <header class="top">
+    <button class="icon-btn glass" id="menuBtn" data-i18n-label="openMenu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+    </button>
+    <h1 id="title"></h1>
+    <div class="counter" id="counter"></div>
+  </header>
+
+  <section class="sec sec-cards">
+    <main class="stage">
+      <article class="card" id="card" aria-live="polite">
+        <div class="kanji-row">
+          <div class="kanji-wrap">
+            <button class="side-btn speak-main" id="speakMain"><svg><use href="#i-speaker"/></svg></button>
+            <span class="kanji" id="kanji" lang="ja"></span>
+            <button class="side-btn heart" id="heart" aria-pressed="false"><svg><use href="#i-heart"/></svg></button>
+          </div>
+        </div>
+        <div class="readings">
+          <div class="reading"><span class="rl"><span lang="ja">音読み</span> on'yomi</span><span class="rv" id="on" lang="ja"></span></div>
+          <div class="reading"><span class="rl"><span lang="ja">訓読み</span> kun'yomi</span><span class="rv" id="kun" lang="ja"></span></div>
+        </div>
+        <div class="meta">
+          <span class="meaning" id="meaning"></span>
+          <button class="radchip" id="radChip"></button>
+        </div>
+        <ul class="words" id="words"></ul>
+      </article>
+      <p class="hint" data-i18n="swipeHint"></p>
+    </main>
+    <nav class="controls">
+      <button class="ctrl glass" id="prevBtn" data-i18n-label="prev"><svg><use href="#i-back"/></svg></button>
+      <button class="ctrl small glass" id="shuffleBtn" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h4v4M4 20L20 4M20 16v4h-4M15 15l5 5M4 4l5 5"/></svg></button>
+      <button class="ctrl glass" id="nextBtn" data-i18n-label="next"><svg><use href="#i-next"/></svg></button>
+    </nav>
+  </section>
+
+  <section class="sec sec-list">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="listSearch" class="glass" type="search" autocomplete="off" enterkeyhint="search">
+    </label>
+    <div class="chips" id="listChips"></div>
+    <div class="grid" id="listGrid"></div>
+    <p class="empty" id="listEmpty" hidden></p>
+  </section>
+
+  <section class="sec sec-radicals">
+    <div class="chips" id="radChips"></div>
+    <div id="radList"></div>
+    <p class="empty" id="radEmpty" hidden data-i18n="emptyLevel"></p>
+  </section>
+
+  <section class="sec sec-radical">
+    <button class="back glass" id="radBack"><svg><use href="#i-back"/></svg><span data-i18n="radicals"></span></button>
+    <div class="rad-head glass">
+      <div class="rad-big" id="radBig" lang="ja"></div>
+      <div class="rad-info"><h2 id="radName"></h2><p id="radSub"></p></div>
+    </div>
+    <div class="chips" id="radDetailChips"></div>
+    <div class="grid" id="radGrid"></div>
+    <p class="empty" id="radGridEmpty" hidden data-i18n="emptyRadical"></p>
+  </section>
+
+  <section class="sec sec-favs">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="search" class="glass" type="search" autocomplete="off">
+    </label>
+    <ul class="fav-list" id="favList"></ul>
+    <p class="empty" id="favEmpty" hidden></p>
+  </section>
+
+  <section class="sec sec-settings">
+    <div class="panel glass">
+      <h2 data-i18n="language"></h2>
+      <p class="note" data-i18n="langNote"></p>
+      <div class="seg" id="langSeg">
+        <button data-lang="tr">Türkçe</button>
+        <button data-lang="en">English</button>
+      </div>
+    </div>
+    <div class="panel glass">
+      <h2 data-i18n="dataTitle"></h2>
+      <p class="note" id="dataInfo"></p>
+      <button class="wide-btn" id="checkBtn" hidden></button>
+    </div>
+    <button class="link-btn glass" id="aboutBtn"><span data-i18n="about"></span><svg width="18" height="18"><use href="#i-next"/></svg></button>
+  </section>
+
+  <section class="sec sec-about">
+    <button class="back glass" id="aboutBack"><svg><use href="#i-back"/></svg><span data-i18n="settings"></span></button>
+    <div class="panel glass about" id="aboutBody"></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="nav-item" data-view="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="4"/></svg><span data-i18n="cards"></span></button>
+  <button class="nav-item" data-view="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg><span data-i18n="allKanji"></span> <span class="count" id="allCount"></span></button>
+  <button class="nav-item" data-view="radicals"><span class="jp" lang="ja">部</span><span data-i18n="radicals"></span> <span class="count" id="radCount"></span></button>
+  <button class="nav-item" data-view="favs"><svg><use href="#i-heart"/></svg><span data-i18n="favorites"></span> <span class="count" id="favCount">0</span></button>
+  <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg><span data-i18n="settings"></span></button>
+  <h2 data-i18n="cardLevel"></h2>
+  <div class="levels" id="levels"></div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const BUNDLED = /*__DATA__*/null;
+let DATA = BUNDLED;
+const LEVELS = ["N5","N4","N3","N2","N1"];
+const $ = id => document.getElementById(id);
+
+// ---- Veri ----
+let KANJI = [], RADS = {};
+let searchCache = {};
+function buildIndex(){
+  searchCache = {};
+  KANJI = DATA.kanji.map(([k,lvl,rad,on,kun,easy,tr,en]) => ({
+    k, lvl, rad, on, kun, easy, m:{tr,en},
+    words: (DATA.words[k] || []).map(([w,r,tr,en]) => ({w, r, m:{tr,en}}))
+  }));
+  RADS = {};
+  DATA.radicals.forEach(([key,forms,ja,st,tr,en]) => RADS[key] = {forms, ja, st, m:{tr,en}});
+  // Radikali tanımsız kanji varsa uygulama çökmesin
+  KANJI.forEach(c => { if (!RADS[c.rad]) RADS[c.rad] = {forms:[c.rad], ja:"", st:0, m:{tr:c.rad, en:c.rad}}; });
+}
+const validData = d => !!(d && d.meta && Array.isArray(d.kanji) && d.kanji.length > 100 && d.words && Array.isArray(d.radicals) && d.i18n && d.i18n.tr);
+// Android: GitHub'dan daha önce indirilmiş, uygulamadakinden yeni veri varsa onu kullan
+if (window.AndroidData){
+  try {
+    const cached = JSON.parse(window.AndroidData.getData() || "null");
+    if (validData(cached) && cached.meta.version > BUNDLED.meta.version) DATA = cached;
+  } catch(e){}
+}
+buildIndex();
+
+// ---- Kayıt ----
+const store = {
+  get(key, fb){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; }catch(e){ return fb; } },
+  set(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){} }
+};
+
+// ---- Dil ----
+let lang = store.get("kanji-ui-lang", "tr");
+if (!DATA.i18n[lang]) lang = "tr";
+const t = (key, vars) => {
+  let s = (DATA.i18n[lang][key] ?? DATA.i18n.tr[key] ?? key);
+  if (vars) for (const v in vars) s = s.split("{" + v + "}").join(vars[v]);
+  return s;
+};
+const M = obj => obj[lang] || obj.tr || obj.en || "";
+
+function applyI18n(){
+  document.documentElement.lang = lang;
+  document.title = t("appTitle");
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-label]").forEach(el => el.setAttribute("aria-label", t(el.dataset.i18nLabel)));
+  $("search").placeholder = t("searchPh");
+  $("listSearch").placeholder = t("searchPh");
+  $("aboutBody").innerHTML = t("aboutHtml");
+  document.querySelectorAll("#langSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  if (window.AndroidTTS && window.AndroidTTS.setMessage){ try { window.AndroidTTS.setMessage(t("noJaVoice")); } catch(e){} }
+  renderDataInfo();
+}
+
+// ---- Veri güncelleme (Android) ----
+const canUpdate = () => { try { return !!(window.AndroidData && window.AndroidData.canUpdate()); } catch(e){ return false; } };
+let manualCheck = false, checking = false;
+function renderDataInfo(){
+  $("dataInfo").textContent = t("dataVersion", {v: DATA.meta.version, n: DATA.kanji.length});
+  const btn = $("checkBtn");
+  btn.hidden = !canUpdate();
+  btn.disabled = checking;
+  btn.textContent = t(checking ? "checking" : "checkUpdates");
+}
+function checkUpdate(manual){
+  if (!canUpdate() || checking) return;
+  manualCheck = manual; checking = true; renderDataInfo();
+  try { window.AndroidData.checkForUpdate(DATA.meta.version); }
+  catch(e){ checking = false; renderDataInfo(); }
+}
+window.onDataStatus = function(status, v){
+  checking = false;
+  if (status === "updated"){
+    try {
+      const fresh = JSON.parse(window.AndroidData.getData() || "null");
+      if (!validData(fresh)) throw new Error("invalid");
+      DATA = fresh; buildIndex();
+      if (!hasLvl(cardLvl)) cardLvl = "N5";
+      loadLevel(cardLvl);
+      applyI18n(); renderLevels(); renderCard(); updateCounts(); setView(view);
+      toast(t("dataUpdated", {v}));
+    } catch(e){ if (manualCheck) toast(t("updateFailed")); }
+  } else if (manualCheck){
+    const keys = {uptodate:"upToDate", failed:"updateFailed", appTooOld:"appTooOld", disabled:"updatesDisabled"};
+    toast(t(keys[status] || "updateFailed"));
+  } else if (status === "appTooOld"){
+    toast(t("appTooOld"));
+  }
+  manualCheck = false;
+  renderDataInfo();
+};
+function setLang(l){
+  lang = l; store.set("kanji-ui-lang", l);
+  applyI18n(); renderLevels(); renderCard(); updateCounts(); setView(view);
+}
+
+// ---- Durum ----
+let favs = new Set(store.get("kanji-favs", store.get("n5-favs", [])));
+const hasLvl = l => KANJI.some(c => c.lvl === l);
+let cardLvl = store.get("kanji-lvl", "N5");
+if (!hasLvl(cardLvl)) cardLvl = "N5";
+let shuffled = store.get("kanji-shuffled", false);
+let order = [], pos = 0;
+let listLvl = "all", radLvl = "all", curRad = null, view = "cards";
+const card = $("card"), heart = $("heart"), app = $("app");
+const baseOrder = () => KANJI.map((c,i) => c.lvl === cardLvl ? i : -1).filter(i => i >= 0);
+const byLvl = (arr, l) => l === "all" ? arr : arr.filter(c => c.lvl === l);
+const current = () => KANJI[order[pos]];
+function shuffleArr(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function loadLevel(l){
+  cardLvl = l; store.set("kanji-lvl", l);
+  const base = baseOrder();
+  const saved = store.get("kanji-order-" + l, null);
+  order = shuffled
+    ? (saved && saved.length === base.length && saved.every(i => KANJI[i] && KANJI[i].lvl === l) ? saved : shuffleArr(base.slice()))
+    : base;
+  if (shuffled) store.set("kanji-order-" + l, order);
+  pos = Math.min(store.get("kanji-pos-" + l, 0), order.length - 1);
+}
+loadLevel(cardLvl);
+
+// ---- Toast ----
+let toastT;
+function toast(msg){
+  const el = $("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+// ---- Ses ----
+let jaVoice = null, warned = false;
+function loadVoices(){ if ("speechSynthesis" in window) jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null; }
+if ("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function clearSpeaking(){ document.querySelectorAll(".speaking").forEach(b => b.classList.remove("speaking")); }
+function speak(text, btn){
+  if (window.AndroidTTS){
+    clearSpeaking();
+    try { window.AndroidTTS.speak(text); } catch(e){}
+    btn.classList.add("speaking");
+    setTimeout(() => btn.classList.remove("speaking"), 1400);
+    return;
+  }
+  if (!("speechSynthesis" in window)){ toast(t("noTTS")); return; }
+  speechSynthesis.cancel(); clearSpeaking();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP"; u.rate = 0.85;
+  if (jaVoice) u.voice = jaVoice;
+  else if (!warned && speechSynthesis.getVoices().length){ warned = true; toast(t("noJaVoice")); }
+  btn.classList.add("speaking");
+  u.onend = u.onerror = () => btn.classList.remove("speaking");
+  speechSynthesis.speak(u);
+}
+const stopSpeech = () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); };
+
+// ---- Kart ----
+function renderCard(){
+  const c = current();
+  $("kanji").textContent = c.k;
+  $("on").textContent = c.on.join("、") || "—";
+  $("kun").textContent = c.kun.join("、") || "—";
+  $("meaning").textContent = M(c.m);
+  const r = RADS[c.rad];
+  const chip = $("radChip"); chip.innerHTML = '<b lang="ja"></b><span></span>';
+  chip.querySelector("b").textContent = r.forms[0];
+  chip.querySelector("span").textContent = t("radicalChip", {name: M(r.m)});
+  $("counter").textContent = (pos+1) + " / " + order.length;
+  const on = favs.has(c.k);
+  heart.setAttribute("aria-pressed", on);
+  heart.setAttribute("aria-label", t(on ? "removeFav" : "addFav"));
+  $("speakMain").setAttribute("aria-label", t("speak", {t: c.easy}));
+  const ul = $("words"); ul.innerHTML = "";
+  c.words.forEach(w => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span><span class="ww" lang="ja"></span><span class="wr" lang="ja"></span></span><span class="wt"></span><button class="speak-sm"><svg><use href="#i-speaker"/></svg></button>';
+    li.querySelector(".ww").textContent = w.w;
+    li.querySelector(".wr").textContent = w.r;
+    li.querySelector(".wt").textContent = M(w.m);
+    const b = li.querySelector("button");
+    b.setAttribute("aria-label", t("speak", {t: w.w}));
+    b.addEventListener("click", () => speak(w.r, b));
+    ul.appendChild(li);
+  });
+  const sb = $("shuffleBtn");
+  sb.setAttribute("aria-pressed", shuffled);
+  sb.setAttribute("aria-label", t(shuffled ? "unshuffle" : "shuffle"));
+  store.set("kanji-pos-" + cardLvl, pos);
+}
+
+function go(step){
+  stopSpeech();
+  pos = (pos + step + order.length) % order.length;
+  card.style.opacity = "0";
+  card.style.transform = "translateX(" + (step>0 ? "-24px" : "24px") + ")";
+  setTimeout(() => {
+    renderCard();
+    card.style.transition = "none";
+    card.style.transform = "translateX(" + (step>0 ? "24px" : "-24px") + ")";
+    requestAnimationFrame(() => { card.style.transition = ""; card.style.opacity = "1"; card.style.transform = ""; });
+  }, 160);
+}
+
+function openKanji(c){
+  if (c.lvl !== cardLvl){ loadLevel(c.lvl); renderLevels(); }
+  pos = order.indexOf(KANJI.indexOf(c));
+  renderCard(); setView("cards");
+}
+
+function toggleFav(){
+  const k = current().k;
+  favs.has(k) ? favs.delete(k) : favs.add(k);
+  store.set("kanji-favs", [...favs]);
+  heart.classList.remove("pop"); void heart.offsetWidth; heart.classList.add("pop");
+  renderCard(); updateCounts();
+}
+
+function setShuffle(v){
+  const k = current().k;
+  shuffled = v;
+  order = v ? shuffleArr(baseOrder()) : baseOrder();
+  pos = v ? 0 : order.findIndex(i => KANJI[i].k === k);
+  store.set("kanji-shuffled", v); store.set("kanji-order-" + cardLvl, order);
+  renderCard();
+}
+
+// ---- Listeler ----
+function renderChips(el, pool, active, onPick){
+  el.innerHTML = "";
+  ["all", ...LEVELS].forEach(l => {
+    const n = byLvl(pool, l).length;
+    const b = document.createElement("button");
+    b.className = "chip glass";
+    b.setAttribute("aria-pressed", l === active);
+    b.disabled = n === 0 && l !== "all";
+    b.append(l === "all" ? t("all") : l, " ");
+    const s = document.createElement("small"); s.textContent = n; b.appendChild(s);
+    b.addEventListener("click", () => onPick(l));
+    el.appendChild(b);
+  });
+}
+function kanjiTile(c){
+  const b = document.createElement("button");
+  b.className = "tile glass"; b.lang = "ja"; b.textContent = c.k;
+  b.setAttribute("aria-label", c.k + ", " + M(c.m));
+  if (favs.has(c.k)){ const d = document.createElement("span"); d.className = "fav-dot"; b.appendChild(d); }
+  b.addEventListener("click", () => openKanji(c));
+  return b;
+}
+function searchInfo(c){
+  const key = lang + c.k;
+  if (searchCache[key]) return searchCache[key];
+  const meaningTokens = M(c.m).split(/[,;()\/]+/).map(norm).filter(Boolean);
+  const words = M(c.m).split(/[,;()\/\s]+/).map(norm).filter(Boolean);
+  const readings = [...c.on, ...c.kun, c.easy].flatMap(r => [norm(r), norm(r.replace(/\(.*\)/, ""))]).filter(Boolean);
+  return (searchCache[key] = {
+    all: [c.k, M(c.m), c.on.join(" "), c.kun.join(" "), c.easy].map(norm).join(" "),
+    exact: new Set([...meaningTokens, ...words, ...readings]),
+    starts: [...meaningTokens, ...words, ...readings]
+  });
+}
+// 0: kanjinin kendisi, 1: tam kelime/okunuş eşleşmesi, 2: başlangıç eşleşmesi, 3: içinde geçiyor, -1: eşleşme yok
+function matchScore(c, raw, q){
+  if (!q) return 0;
+  if (raw.includes(c.k)) return 0;
+  const s = searchInfo(c);
+  if (s.exact.has(q)) return 1;
+  if (s.starts.some(x => x.startsWith(q))) return 2;
+  return s.all.includes(q) ? 3 : -1;
+}
+function renderList(){
+  const raw = $("listSearch").value.trim(), q = norm(raw);
+  let pool = KANJI;
+  if (q){
+    // Birden çok kanji yazılırsa (ör. 学校) yazılış sırasıyla göster
+    const scored = [];
+    KANJI.forEach((c, i) => { const sc = matchScore(c, raw, q); if (sc >= 0) scored.push([sc, sc === 0 ? raw.indexOf(c.k) : i, c]); });
+    scored.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    pool = scored.map(x => x[2]);
+  }
+  renderChips($("listChips"), pool, listLvl, l => { listLvl = l; renderList(); });
+  const items = byLvl(pool, listLvl), g = $("listGrid");
+  g.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  items.forEach(c => frag.appendChild(kanjiTile(c)));
+  g.appendChild(frag);
+  const empty = $("listEmpty");
+  empty.textContent = raw ? t("listNoResult", {q: raw}) : t("emptyLevel");
+  empty.hidden = items.length > 0;
+}
+const radKanji = (key, l) => byLvl(KANJI.filter(c => c.rad === key), l);
+function renderRadicals(){
+  renderChips($("radChips"), KANJI, radLvl, l => { radLvl = l; renderRadicals(); });
+  const wrap = $("radList"); wrap.innerHTML = "";
+  const keys = Object.keys(RADS).filter(k => radKanji(k, radLvl).length).sort((a,b) => RADS[a].st - RADS[b].st);
+  let stroke = null, grid;
+  keys.forEach(k => {
+    const r = RADS[k];
+    if (r.st !== stroke){
+      stroke = r.st;
+      const h = document.createElement("h3"); h.className = "stroke-h"; h.textContent = t("strokes", {n: r.st});
+      grid = document.createElement("div"); grid.className = "rgrid";
+      wrap.append(h, grid);
+    }
+    const b = document.createElement("button");
+    b.className = "rtile glass";
+    b.innerHTML = '<span class="rs" lang="ja"></span><span class="rn"></span><span class="rc"></span>';
+    b.querySelector(".rs").textContent = r.forms.join(" ");
+    b.querySelector(".rn").textContent = M(r.m);
+    b.querySelector(".rc").textContent = t("kanjiCount", {n: radKanji(k, radLvl).length});
+    b.addEventListener("click", () => { curRad = k; setView("radical"); });
+    grid.appendChild(b);
+  });
+  $("radEmpty").hidden = keys.length > 0;
+}
+function renderRadical(){
+  const r = RADS[curRad];
+  $("radBig").textContent = r.forms[0];
+  $("radName").textContent = M(r.m);
+  const sub = $("radSub"); sub.innerHTML = "";
+  const jp = document.createElement("span"); jp.lang = "ja"; jp.textContent = r.ja;
+  const extra = (r.forms.length > 1 ? t("otherForm", {f: r.forms.slice(1).join(" ")}) + ", " : "") + t("strokes", {n: r.st});
+  sub.append(jp, document.createElement("br"), extra);
+  const pool = KANJI.filter(c => c.rad === curRad);
+  renderChips($("radDetailChips"), pool, radLvl, l => { radLvl = l; renderRadical(); });
+  const items = byLvl(pool, radLvl), g = $("radGrid");
+  g.innerHTML = "";
+  items.forEach(c => g.appendChild(kanjiTile(c)));
+  $("radGridEmpty").hidden = items.length > 0;
+}
+
+// ---- Favoriler ----
+const toHira = s => s.replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+const norm = s => toHira(s).toLocaleLowerCase(lang === "tr" ? "tr" : "en").replace(/[()、・\s—]/g, "");
+function renderFavs(){
+  const raw = $("search").value.trim(), q = norm(raw);
+  const list = $("favList"), empty = $("favEmpty");
+  list.innerHTML = "";
+  const items = KANJI.filter(c => favs.has(c.k)).filter(c => !q || [c.k, M(c.m), c.on.join(" "), c.kun.join(" "), c.easy].map(norm).join(" ").includes(q));
+  items.forEach(c => {
+    const li = document.createElement("li");
+    li.innerHTML = '<button class="fav glass"><span class="fk" lang="ja"></span><span><span class="fr" lang="ja"></span><span class="fm"></span></span></button>';
+    li.querySelector(".fk").textContent = c.k;
+    li.querySelector(".fr").textContent = c.easy;
+    li.querySelector(".fm").textContent = M(c.m);
+    li.querySelector("button").addEventListener("click", () => openKanji(c));
+    list.appendChild(li);
+  });
+  if (!favs.size){ empty.textContent = t("favEmpty"); empty.hidden = false; }
+  else if (!items.length){ empty.textContent = t("favNoResult", {q: raw}); empty.hidden = false; }
+  else empty.hidden = true;
+}
+
+function updateCounts(){
+  $("favCount").textContent = favs.size;
+  $("allCount").textContent = KANJI.length;
+  $("radCount").textContent = new Set(KANJI.map(c => c.rad)).size;
+}
+
+// ---- Görünüm ----
+const TITLE_KEYS = {list:"allKanji", radicals:"radicals", radical:"radical", favs:"favorites", settings:"settings", about:"about"};
+function setView(v){
+  view = v; stopSpeech();
+  app.dataset.view = v;
+  $("title").textContent = v === "cards" ? t("levelKanji", {lvl: cardLvl}) : t(TITLE_KEYS[v]);
+  $("counter").style.visibility = v === "cards" ? "visible" : "hidden";
+  const navKey = v === "radical" ? "radicals" : v === "about" ? "settings" : v;
+  document.querySelectorAll(".nav-item").forEach(b => {
+    if (b.dataset.view === navKey) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");
+  });
+  if (v === "list") renderList();
+  if (v === "radicals") renderRadicals();
+  if (v === "radical") renderRadical();
+  if (v === "favs") renderFavs();
+  closeMenu();
+  window.scrollTo(0,0);
+}
+function renderLevels(){
+  const el = $("levels"); el.innerHTML = "";
+  LEVELS.forEach(l => {
+    const b = document.createElement("button");
+    b.className = "lvl"; b.textContent = l;
+    b.disabled = !hasLvl(l);
+    b.setAttribute("aria-pressed", l === cardLvl);
+    b.addEventListener("click", () => { loadLevel(l); renderLevels(); renderCard(); setView("cards"); });
+    el.appendChild(b);
+  });
+}
+function openMenu(){ $("drawer").classList.add("open"); $("scrim").classList.add("open"); }
+function closeMenu(){ $("drawer").classList.remove("open"); $("scrim").classList.remove("open"); }
+
+$("menuBtn").addEventListener("click", openMenu);
+$("scrim").addEventListener("click", closeMenu);
+document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+document.querySelectorAll("#langSeg button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+$("aboutBtn").addEventListener("click", () => setView("about"));
+$("checkBtn").addEventListener("click", () => checkUpdate(true));
+$("aboutBack").addEventListener("click", () => setView("settings"));
+heart.addEventListener("click", e => { e.stopPropagation(); toggleFav(); });
+$("speakMain").addEventListener("click", e => { e.stopPropagation(); speak(current().easy, $("speakMain")); });
+$("radChip").addEventListener("click", () => { curRad = current().rad; setView("radical"); });
+$("radBack").addEventListener("click", () => setView("radicals"));
+$("prevBtn").addEventListener("click", () => go(-1));
+$("nextBtn").addEventListener("click", () => go(1));
+$("shuffleBtn").addEventListener("click", () => setShuffle(!shuffled));
+$("search").addEventListener("input", renderFavs);
+let listSearchT;
+$("listSearch").addEventListener("input", () => { clearTimeout(listSearchT); listSearchT = setTimeout(renderList, 120); });
+$("listSearch").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeMenu();
+  if (view !== "cards" || e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowRight") go(1);
+  if (e.key === "ArrowLeft") go(-1);
+});
+
+let sx = null, dx = 0;
+card.addEventListener("pointerdown", e => {
+  if (e.target.closest("button")) return;
+  sx = e.clientX; dx = 0; card.classList.add("dragging");
+});
+window.addEventListener("pointermove", e => {
+  if (sx === null) return;
+  dx = e.clientX - sx;
+  card.style.transform = "translateX(" + dx*0.6 + "px) rotate(" + dx*0.02 + "deg)";
+});
+const endDrag = () => {
+  if (sx === null) return;
+  card.classList.remove("dragging"); sx = null;
+  if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); else card.style.transform = "";
+};
+window.addEventListener("pointerup", endDrag);
+window.addEventListener("pointercancel", () => { dx = 0; endDrag(); });
+
+// Android geri tuşu için
+window.appBack = function(){
+  if ($("drawer").classList.contains("open")){ closeMenu(); return true; }
+  if (view === "list" && $("listSearch").value){ $("listSearch").value = ""; renderList(); return true; }
+  if (view === "radical"){ setView("radicals"); return true; }
+  if (view === "about"){ setView("settings"); return true; }
+  if (view !== "cards"){ setView("cards"); return true; }
+  return false;
+};
+
+applyI18n();
+renderLevels();
+renderCard();
+updateCounts();
+setView("cards");
+if (canUpdate()) setTimeout(() => checkUpdate(false), 1500);
+</script>
+</body>
+</html>
